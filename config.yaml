@@ -1,0 +1,44 @@
+# Configuration for Free AI Explainer Video Generator
+
+llm:
+  host: "http://localhost:11434"
+  model: "llama3.1:8b" # Alternatives: qwen2.5:7b, gemma2:9b
+  timeout_seconds: 180
+  temperature: 0.2
+  max_retries: 3
+
+tts:
+  default_engine: "edge-tts" # Fallback: "piper"
+  default_language: "en"     # "en" or "hi"
+  voices:
+    en: "en-US-AriaNeural"   # Alternatives: en-US-ChristopherNeural, en-GB-SoniaNeural
+    hi: "hi-IN-SwaraNeural"  # Alternatives: hi-IN-MadhurNeural
+  rate: "+0%"
+  volume: "+0%"
+
+animation:
+  engine: "manim"
+  mode: "templates" # "templates" or "freeform"
+  resolution: "1080p" # "720p", "1080p", "480p"
+  quality_flag: "-qm" # -ql (480p fast preview), -qm (720p), -qh (1080p)
+  fps: 30
+  background_color: "#0F172A" # Dark modern slate
+  accent_color: "#38BDF8"     # Electric sky blue
+  text_color: "#F8FAFC"       # Off-white
+  max_code_repair_attempts: 3
+
+subtitles:
+  enabled: true
+  whisper_model: "base" # "tiny", "base", "small" (optimized for CPU int8)
+  font_size: 24
+  font_color: "&H00FFFFFF"
+  highlight_color: "&H0038BDF8"
+
+paths:
+  storage_dir: "storage"
+  raw_uploads: "storage/raw_uploads"
+  audio_dir: "storage/audio"
+  scenes_dir: "storage/scenes"
+  subtitles_dir: "storage/subtitles"
+  output_dir: "storage/output"
+  eval_dir: "storage/eval"

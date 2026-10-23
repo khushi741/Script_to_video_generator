@@ -1,0 +1,60 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+
+# Node & Frontend
+node_modules/
+frontend/node_modules/
+.npm
+.eslintcache
+
+# Project storage outputs (large binary files)
+storage/raw_uploads/*
+!storage/raw_uploads/.gitkeep
+storage/audio/*
+!storage/audio/.gitkeep
+storage/scenes/*
+!storage/scenes/.gitkeep
+storage/subtitles/*
+!storage/subtitles/.gitkeep
+storage/output/*
+!storage/output/.gitkeep
+storage/eval/*
+!storage/eval/.gitkeep
+storage/logs/*
+!storage/logs/.gitkeep
+storage/*.db
+storage/*.db-journal
+
+# Environment variables & secrets
+.env
+.env.local
+
+# OS generated
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store

@@ -1,0 +1,3 @@
+"""
+Manim Visual Scene Templates
+"""
