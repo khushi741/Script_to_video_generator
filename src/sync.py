@@ -6,8 +6,19 @@ Extracts word-level timestamps, builds .srt subtitles, and calculates exact scen
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 import yaml
-from faster_whisper import WhisperModel
 
+# PyAV 14+ compatibility patch for faster-whisper
+try:
+    import av
+    _orig_av_open = av.open
+    def _safe_av_open(*args, **kwargs):
+        kwargs.pop("metadata_errors", None)
+        return _orig_av_open(*args, **kwargs)
+    av.open = _safe_av_open
+except Exception:
+    pass
+
+from faster_whisper import WhisperModel
 from core.logger import setup_logger
 
 logger = setup_logger("sync_engine")

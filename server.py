@@ -257,7 +257,17 @@ def health_check():
     import shutil
     import requests
 
-    ffmpeg_available = bool(shutil.which("ffmpeg"))
+    ffmpeg_bin = shutil.which("ffmpeg")
+    if not ffmpeg_bin:
+        try:
+            import imageio_ffmpeg
+            exe = imageio_ffmpeg.get_ffmpeg_exe()
+            if exe and Path(exe).exists():
+                ffmpeg_bin = exe
+        except Exception:
+            pass
+    ffmpeg_available = bool(ffmpeg_bin)
+
     manim_available = bool(shutil.which("manim"))
     ollama_available = False
 
@@ -336,18 +346,45 @@ def get_job_status(job_id: str):
     return job
 
 
-@app.get("/api/video/{job_id}")
-def get_video_file(job_id: str):
-    """Serves the generated MP4 video file with streaming headers."""
-    job = job_store.get_job(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found.")
+@app.api_route("/api/video/{identifier}", methods=["GET", "HEAD"])
+def get_video_file(identifier: str):
+    """Serves the generated MP4 video file with streaming headers.
+    Supports lookup by job_id, session_id, or video filename."""
+    video_path = None
 
-    if job["status"] != "completed" or not job.get("result"):
-        raise HTTPException(status_code=400, detail="Video is not ready yet.")
+    # 1. Try finding by job_id in job_store
+    job = job_store.get_job(identifier)
+    if job and job.get("result") and job["result"].get("video_path"):
+        p = Path(job["result"]["video_path"])
+        if p.exists():
+            video_path = p
 
-    video_path = Path(job["result"]["video_path"])
-    if not video_path.exists():
+    # 2. Try finding by session_id in jobs
+    if not video_path:
+        for j in job_store._cache.values():
+            res = j.get("result")
+            if res and res.get("session_id") == identifier:
+                p = Path(res.get("video_path", ""))
+                if p.exists():
+                    video_path = p
+                    break
+
+    # 3. Try finding any mp4 in storage/output containing identifier
+    if not video_path:
+        output_dir = Path(__file__).resolve().parent / "storage" / "output"
+        for candidate in output_dir.glob("*.mp4"):
+            if identifier in candidate.name:
+                video_path = candidate
+                break
+
+    # 4. Fallback to latest generated video if exists
+    if not video_path:
+        output_dir = Path(__file__).resolve().parent / "storage" / "output"
+        mp4s = sorted(output_dir.glob("*.mp4"), key=lambda f: f.stat().st_mtime, reverse=True)
+        if mp4s:
+            video_path = mp4s[0]
+
+    if not video_path or not video_path.exists():
         raise HTTPException(status_code=404, detail="Video file not found on disk.")
 
     return FileResponse(
@@ -357,17 +394,28 @@ def get_video_file(job_id: str):
     )
 
 
-@app.get("/api/report/{job_id}")
-def get_quality_report(job_id: str):
-    """Returns the full quality and hallucination report JSON."""
-    job = job_store.get_job(job_id)
-    if not job:
-        raise HTTPException(status_code=404, detail="Job not found.")
+@app.get("/api/report/{identifier}")
+def get_quality_report(identifier: str):
+    """Returns the full quality and hallucination report JSON by job_id or session_id."""
+    job = job_store.get_job(identifier)
+    if job and job.get("result"):
+        return job["result"].get("quality_report", {})
 
-    if not job.get("result"):
-        raise HTTPException(status_code=400, detail="Report not ready yet.")
+    for j in job_store._cache.values():
+        res = j.get("result")
+        if res and res.get("session_id") == identifier:
+            return res.get("quality_report", {})
 
-    return job["result"].get("quality_report", {})
+    # Try loading from storage/eval by identifier
+    eval_dir = Path(__file__).resolve().parent / "storage" / "eval"
+    for candidate in eval_dir.glob(f"*{identifier}*.json"):
+        try:
+            with open(candidate, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+
+    raise HTTPException(status_code=404, detail="Report not ready or not found.")
 
 
 @app.post("/api/cleanup")

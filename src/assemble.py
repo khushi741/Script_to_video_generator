@@ -40,11 +40,29 @@ class VideoAssembler:
         self._verify_ffmpeg()
 
     @staticmethod
-    def _verify_ffmpeg():
-        """Checks if ffmpeg is accessible on PATH."""
-        if not shutil.which("ffmpeg"):
-            logger.error("FFmpeg was NOT found on your system PATH! Video assembly will fail.")
+    def get_ffmpeg_binary() -> Optional[str]:
+        """Finds FFmpeg executable from system PATH or imageio_ffmpeg bundle."""
+        bin_path = shutil.which("ffmpeg")
+        if bin_path:
+            return bin_path
+        try:
+            import imageio_ffmpeg
+            exe = imageio_ffmpeg.get_ffmpeg_exe()
+            if exe and Path(exe).exists():
+                return exe
+        except Exception:
+            pass
+        return None
+
+    @classmethod
+    def _verify_ffmpeg(cls):
+        """Checks if ffmpeg is accessible on PATH or bundled via imageio_ffmpeg."""
+        ffmpeg_bin = cls.get_ffmpeg_binary()
+        if not ffmpeg_bin:
+            logger.error("FFmpeg was NOT found on your system PATH or imageio_ffmpeg! Video assembly will fail.")
             logger.info("Windows: winget install Gyan.FFmpeg | Mac: brew install ffmpeg | Linux: apt install ffmpeg")
+        else:
+            logger.info(f"FFmpeg engine active: {ffmpeg_bin}")
 
     def render_scene(
         self,
@@ -182,7 +200,7 @@ class SafeFallbackScene(FallbackScene):
         output_path = Path(output_path)
         output_path.parent.mkdir(parents=True, exist_ok=True)
 
-        ffmpeg_bin = shutil.which("ffmpeg")
+        ffmpeg_bin = self.get_ffmpeg_binary()
         if not ffmpeg_bin:
             logger.error("FFmpeg not found on system PATH. Cannot mux audio and video.")
             if video_path.exists():
@@ -234,7 +252,7 @@ class SafeFallbackScene(FallbackScene):
         if not scene_mp4s:
             raise ValueError("No scene MP4s provided for concatenation.")
 
-        ffmpeg_bin = shutil.which("ffmpeg")
+        ffmpeg_bin = self.get_ffmpeg_binary()
         if not ffmpeg_bin:
             logger.error("FFmpeg not found on system PATH. Cannot concatenate scenes.")
             if scene_mp4s[0].exists():

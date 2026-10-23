@@ -9,7 +9,7 @@ interface VideoPlayerProps {
 }
 
 export const VideoPlayer: React.FC<VideoPlayerProps> = ({ result, onOpenReport }) => {
-  const videoUrl = getVideoDownloadUrl(result.session_id);
+  const videoUrl = getVideoDownloadUrl((result as any).job_id || result.session_id);
 
   return (
     <div className="studio-card">

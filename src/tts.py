@@ -129,13 +129,29 @@ class TTSEngine:
 
         # If desired output is mp3, convert with ffmpeg
         if output_path.suffix.lower() == ".mp3":
-            subprocess.run(
-                ["ffmpeg", "-y", "-i", str(wav_path), "-codec:a", "libmp3lame", str(output_path)],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=True,
-            )
+            ffmpeg_exe = self._get_ffmpeg()
+            if ffmpeg_exe:
+                subprocess.run(
+                    [ffmpeg_exe, "-y", "-i", str(wav_path), "-codec:a", "libmp3lame", str(output_path)],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                )
             wav_path.unlink(missing_ok=True)
+
+    @staticmethod
+    def _get_ffmpeg() -> Optional[str]:
+        bin_path = shutil.which("ffmpeg")
+        if bin_path:
+            return bin_path
+        try:
+            import imageio_ffmpeg
+            exe = imageio_ffmpeg.get_ffmpeg_exe()
+            if exe and Path(exe).exists():
+                return exe
+        except Exception:
+            pass
+        return None
 
     @staticmethod
     def _get_audio_duration(file_path: Path) -> float:
@@ -193,14 +209,16 @@ class TTSEngine:
         word_count = len(text.split())
         est_duration = max(3.0, round(word_count / 2.2, 2))
 
-        # Generate silent audio with ffmpeg
-        subprocess.run(
-            [
-                "ffmpeg", "-y", "-f", "lavfi", "-i", f"anullsrc=r=44100:cl=stereo",
-                "-t", str(est_duration), "-q:a", "9", "-acodec", "libmp3lame", str(output_path)
-            ],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            check=False,
-        )
+        # Generate silent audio with ffmpeg if available
+        ffmpeg_exe = TTSEngine._get_ffmpeg()
+        if ffmpeg_exe:
+            subprocess.run(
+                [
+                    ffmpeg_exe, "-y", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
+                    "-t", str(est_duration), "-q:a", "9", "-acodec", "libmp3lame", str(output_path)
+                ],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+            )
         return est_duration
